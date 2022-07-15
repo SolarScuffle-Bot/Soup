@@ -43,9 +43,9 @@ local function StringPlace(Place)
 end
 
 local NextPlace = 1
-local UniversalSignature = "0"
-local SignatureToCollection = {}
 local NameToData = {}
+local SignatureToCollection = {}
+local UniversalSignature = "0"
 
 local function InsertEntity(Entity, Collection)
 	local Index = #Collection.Entities + 1
@@ -81,6 +81,9 @@ local function GetCollection(Signature)
 
 	return Collection
 end
+
+--Initialize the Universal collection
+GetCollection(UniversalSignature)
 
 local Module = {}
 
