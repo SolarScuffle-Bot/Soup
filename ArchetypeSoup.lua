@@ -43,9 +43,9 @@ local function StringPlace(Place)
 end
 
 local NextPlace = 1
-local NameToData = {}
-local SignatureToCollection = {}
 local UniversalSignature = "0"
+local SignatureToCollection = {}
+local NameToData = {}
 
 local function InsertEntity(Entity, Collection)
 	local Index = #Collection.Entities + 1
@@ -64,7 +64,7 @@ end
 local function GetCollection(Signature)
 	local Collection = SignatureToCollection[Signature]
 	if Collection then return Collection end
-	
+
 	Collection = {
 		Signature = Signature;
 		Entities = {};
@@ -78,20 +78,17 @@ local function GetCollection(Signature)
 			InsertEntity(Entity, Collection)
 		end
 	end
-	
+
 	return Collection
 end
 
 local Module = {}
 
 Module.GetCollection = function(Names)
-	local Signature = "0"
+	local Signature = UniversalSignature
 	for _, Name in ipairs(Names) do
 		local Data = NameToData[Name]
-		if not Data then
-			error("Attempting to get collection of non-existant "..Name.." component")
-			return
-		end
+		assert(Data, "Attempting to get collection of non-existant " .. Name .. " component")
 
 		Signature = StringBOr(Signature, Data.Signature)
 	end
@@ -100,16 +97,15 @@ Module.GetCollection = function(Names)
 end
 
 Module.ConstructComponent = function(Name, Template)
-	if NameToData[Name] then
-		error("Attempting to construct component "..Name.." twice")
-		return
-	end
+	assert(not NameToData[Name], "Attempting to construct component "..Name.." twice")
+
+	Template = Template or {}
 
 	NameToData[Name] = {
 		Signature = StringPlace(NextPlace);
 
-		Constructor = Template.Constructor or Template.constructor or function() return true end;
-		Destructor = Template.Destructor or Template.destructor or function() end;
+		Constructor = Template.Constructor or Template.constructor or function(Entity, ...) return true end;
+		Destructor = Template.Destructor or Template.destructor or function(Entity, ...) end;
 	}
 
 	NextPlace = NextPlace + 1
@@ -117,46 +113,34 @@ end
 
 Module.CreateComponent = function(Entity, Name, ...)
 	local Data = NameToData[Name]
-	if not Data then
-		error("Attempting to create instance of non-existant "..Name.." component")
-		return
-	end
+	assert(Data, "Attempting to create instance of non-existant " .. Name .. " component")
 
 	if Entity[Name] then
-		warn("Attempting to create instance of "..Name.." component on entity "..Entity.." when it already exists")
-		return
+		print("Attempting to create instance of " .. Name .. " component on entity " .. Entity .. " when it already exists, overwriting")
 	end
 
 	Entity[Name] = Data.Constructor(Entity, ...)
 	Entity._Signature = StringBOr(Entity._Signature, Data.Signature)
 
 	for CollectionSignature, Collection in pairs(SignatureToCollection) do
-		if 
+		if
 			StringBAnd(CollectionSignature, Entity._Signature) == Entity._Signature and
 			not Collection.EntityToIndex[Entity]
 		then
 			InsertEntity(Entity, Collection)
 		end
 	end
-	
-	warn(SignatureToCollection)
 end
 
 Module.DeleteComponent = function(Entity, Name, ...)
 	local Data = NameToData[Name]
-	if not Data then
-		error("Attempting to delete instance of non-existant "..Name.." component")
-		return
-	end
+	assert(Data, "Attempting to delete instance of non-existant " .. Name .. " component")
 
 	local Component = Entity[Name]
-	if not Component then
-		warn("Attempting to delete instance of "..Name.." component on entity "..Entity.." when it doesn't exist")
-		return
-	end
+	assert(Component, "Attempting to delete instance of " .. Name .. " component on entity " .. Entity .. " when it doesn't exist")
 
 	for CollectionSignature, Collection in pairs(SignatureToCollection) do
-		if 
+		if
 			StringBAnd(CollectionSignature, Entity._Signature) == CollectionSignature and
 			Collection.EntityToIndex[Entity]
 		then
@@ -189,28 +173,28 @@ end
 
 Module.GetDebugText = function()
 	local Text = "DEBUG TEXT:\n\n"
-	
+
 	for Signature, Collection in pairs(SignatureToCollection) do
-		Text ..= "("..tonumber(string.reverse(Signature), 2)..") => [\n\t"
-		
-		for i, Entity in ipairs(Collection.Entities) do
-			Text ..= "("
-			
+		Text ..= "(Collection "..tonumber(string.reverse(Signature), 2)..") => [\n\t"
+
+		for _, Entity in ipairs(Collection.Entities) do
+			Text ..= "(Entity "
+
 			local Names = {}
 			table.insert(Names, tonumber(string.reverse(Entity._Signature), 2))
-			
+
 			for Name in pairs(Entity) do
 				if Name ~= "_Signature" then
 					table.insert(Names, Name)
-				end	
+				end
 			end
-			
+
 			Text ..= table.concat(Names, ", ") .. ")\t"
 		end
-		
+
 		Text ..= "\n],\n\n"
 	end
-	
+
 	return Text
 end
 
