@@ -1,6 +1,8 @@
 # Soup
 Soup is a minimalistic, lightweight ECS for luau.
 
+If you wish for the ability to query intersections of components, look to [Stew](https://github.com/Data-Oriented-House/Stew), the bulkier successor of Soup.
+
 The design goals are as follows:
 
     It needs to be efficient.
